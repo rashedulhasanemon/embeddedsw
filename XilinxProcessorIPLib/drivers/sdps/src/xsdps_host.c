@@ -535,8 +535,32 @@ s32 XSdPs_EmmcModeInit(XSdPs *InstancePtr)
 	/* Get Extended CSD */
 	Status = XSdPs_Get_Mmc_ExtCsd(InstancePtr, ExtCsd);
 	if (Status != XST_SUCCESS) {
-		Status = XST_FAILURE;
-		goto RETURN_PATH;
+		if (InstancePtr->BusWidth > XSDPS_1_BIT_WIDTH) {
+			Status = XSdPs_Reset(InstancePtr, XSDPS_SWRST_CMD_LINE_MASK);
+			if (Status != XST_SUCCESS) {
+				Status = XST_FAILURE;
+				goto RETURN_PATH;
+			}
+			Status = XSdPs_Reset(InstancePtr, XSDPS_SWRST_DAT_LINE_MASK);
+			if (Status != XST_SUCCESS) {
+				Status = XST_FAILURE;
+				goto RETURN_PATH;
+			}
+			InstancePtr->BusWidth = XSDPS_1_BIT_WIDTH;
+			Status = XSdPs_Change_BusWidth(InstancePtr);
+			if (Status != XST_SUCCESS) {
+				Status = XST_FAILURE;
+				goto RETURN_PATH;
+			}
+			Status = XSdPs_Get_Mmc_ExtCsd(InstancePtr, ExtCsd);
+			if (Status != XST_SUCCESS) {
+				Status = XST_FAILURE;
+				goto RETURN_PATH;
+			}
+		} else {
+			Status = XST_FAILURE;
+			goto RETURN_PATH;
+		}
 	}
 
 	InstancePtr->SectorCount = ((u32)ExtCsd[EXT_CSD_SEC_COUNT_BYTE4]) << 24;

@@ -269,7 +269,7 @@ s32 XSdPs_Get_BusWidth(XSdPs *InstancePtr, u8 *ReadBuff)
 /*****************************************************************************/
 /**
 *
-* @brief Sets bus width to 4-bit in card and host.
+* @brief Sets bus width in card and host.
 *
 * @param[in]	InstancePtr Pointer to the XSdPs instance.
 *
@@ -319,12 +319,14 @@ s32 XSdPs_Change_BusWidth(XSdPs *InstancePtr)
 			} else {
 				Arg = XSDPS_MMC_8_BIT_BUS_ARG;
 			}
-		} else {
+		} else if (InstancePtr->BusWidth == XSDPS_4_BIT_WIDTH) {
 			if (InstancePtr->Mode == XSDPS_DDR52_MODE) {
 				Arg = XSDPS_MMC_DDR_4_BIT_BUS_ARG;
 			} else {
 				Arg = XSDPS_MMC_4_BIT_BUS_ARG;
 			}
+		} else {
+			Arg = XSDPS_MMC_1_BIT_BUS_ARG;
 		}
 
 		Status = XSdPs_Set_Mmc_ExtCsd(InstancePtr, Arg);
@@ -339,11 +341,18 @@ s32 XSdPs_Change_BusWidth(XSdPs *InstancePtr)
 	StatusReg = XSdPs_ReadReg8(InstancePtr->Config.BaseAddress,
 					XSDPS_HOST_CTRL1_OFFSET);
 
-	/* Width setting in controller */
+	/* Width setting in controller and clear opposing width bits
+	 * so that runtime bus-width downgrades (e.g., 8 bit to
+	 * 4-bit or 1 bit) take effect*/
 	if (InstancePtr->BusWidth == XSDPS_8_BIT_WIDTH) {
+		StatusReg &= ~XSDPS_HC_WIDTH_MASK;
 		StatusReg |= XSDPS_HC_EXT_BUS_WIDTH;
-	} else {
+	} else if (InstancePtr->BusWidth == XSDPS_4_BIT_WIDTH) {
+		StatusReg &= ~XSDPS_HC_EXT_BUS_WIDTH;
 		StatusReg |= XSDPS_HC_WIDTH_MASK;
+	} else {
+		StatusReg &= (~((u32)XSDPS_HC_EXT_BUS_WIDTH |
+				(u32)XSDPS_HC_WIDTH_MASK));
 	}
 
 	XSdPs_WriteReg8(InstancePtr->Config.BaseAddress,
